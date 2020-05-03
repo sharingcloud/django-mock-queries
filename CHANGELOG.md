@@ -1,5 +1,12 @@
 # Change Log
 
+## [v2.1.5.sc] (2020-05-03)
+
+**Features:**
+
+- Support objects.get with Q filters,
+- New methods to patch save() and delete() methods on model classes
+
 ## [v1.0.5](https://github.com/stphivos/django-mock-queries/tree/v1.0.5) (2017-11-30)
 [Full Changelog](https://github.com/stphivos/django-mock-queries/compare/v1.0.4...v1.0.5)
 

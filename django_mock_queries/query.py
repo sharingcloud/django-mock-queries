@@ -45,7 +45,19 @@ class MockSet(MagicMock):
         self.__iter__ = lambda s: iter(s.items)
         self.__getitem__ = lambda s, k: self.items[k]
         self.__bool__ = self.__nonzero__ = lambda s: len(s.items) > 0
-
+        
+    def _compute_pk(self):
+        # Iterate on added elements
+        max_id = 0
+        for element in self.items:
+            if element.pk:
+                max_id = max(element.pk, max_id)
+        return max_id + 1
+        
+    def _try_inject_pk(self, model):
+        if hasattr(model, "pk") and not model.pk:
+            model.pk = self._compute_pk()
+            
     def _return_self(self, *_, **__):
         return self
 
@@ -76,6 +88,9 @@ class MockSet(MagicMock):
                 self._register_fields(obj)
 
         for model in models:
+            # Try to inject PK
+            self._try_inject_pk(model)           
+             
             self.items.append(model)
             self.fire(model, self.EVENT_ADDED, self.EVENT_SAVED)
 

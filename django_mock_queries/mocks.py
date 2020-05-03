@@ -3,6 +3,7 @@ import sys
 import django
 import weakref
 from django.apps import apps
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import connections
 from django.db.backends.base import creation
 from django.db.models import Model
@@ -498,3 +499,54 @@ class ModelMocker(Mocker):
             return delete(self.state.pop('collector'), *args, **kwargs)
         else:
             return self.objects.filter(pk=getattr(model, self.cls._meta.pk.attname)).delete()
+
+
+def _extract_attr_map_from_instance(instance):
+    model = type(instance)
+    fields = model._meta._get_fields(reverse=False)
+    output = {}
+    for field in fields:
+        if isinstance(field, GenericRelation):
+            # Ignore generic relations
+            continue
+
+        field_name = field.name
+        if field.is_relation:
+            field_name += "_id"
+
+        output[field_name] = getattr(instance, field_name)
+
+    return output
+
+
+def patch_model_save(model):
+    """Patch the save() function for a model class to use the MockSet instance."""
+    def save(self, *a, **k):
+        objects = model.objects
+        if not isinstance(objects, MockSet):
+            raise LookupError(f"{model}.objects should be a MockSet instance.")
+
+        if self.pk:
+            # Update attributes
+            fields_to_update = _extract_attr_map_from_instance(self)
+            objects.filter(pk=self.pk).update(**fields_to_update)
+        else:
+            # Add object
+            objects.add(self)
+
+    return save
+    
+    
+def patch_model_delete(model):
+    """Patch the delete() function for a model class to use the MockSet instance."""
+    def delete(self, *a, **k):
+        objects = model.objects
+        if not isinstance(objects, MockSet):
+            raise LookupError(f"{model}.objects should be a MockSet instance.")
+        
+        if self.pk:
+            return objects.filter(pk=getattr(self, model._meta.pk.attname)).delete()
+        else:
+            return None
+            
+    return delete
