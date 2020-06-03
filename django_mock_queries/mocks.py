@@ -6,7 +6,7 @@ from django.apps import apps
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import connections
 from django.db.backends.base import creation
-from django.db.models import Model
+from django.db.models import Model, ForeignKey
 from django.db.utils import ConnectionHandler, NotSupportedError
 from functools import partial
 from itertools import chain
@@ -512,7 +512,11 @@ def _extract_attr_map_from_instance(instance):
 
         field_name = field.name
         if field.is_relation:
-            field_name += "_id"
+            if not isinstance(field, ForeignKey):
+                # Ignore non-foreign key relations
+                continue
+            else:
+                field_name += "_id"
 
         output[field_name] = getattr(instance, field_name)
 
